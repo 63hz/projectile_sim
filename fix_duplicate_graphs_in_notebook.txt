@@ -1,0 +1,35 @@
+You’re working in a Jupyter notebook running in VS Code (matplotlib backend is “inline”). Several cells that use ipywidgets.interact(...) and Matplotlib are producing multiple duplicate plot outputs (often 2–4 copies), where only one is tied to the widget output area.
+
+Fix ALL occurrences across the notebook by refactoring widget-driven plotting cells to use a single, explicit output region.
+
+Rules:
+1) Do NOT use ipywidgets.interact(...) anywhere for plotting.
+2) Replace interact(...) with:
+   - an ipywidgets.Output() named (or scoped) per plot cell, and
+   - widgets.interactive_output(callback, controls_dict)
+   - clear_output(wait=True) inside the Output context before redrawing.
+3) Plot functions should NOT call plt.show(). They should either:
+   a) return a Matplotlib Figure (preferred), or
+   b) do all plotting inside the Output context and display(fig) explicitly.
+4) Always call plt.close(fig) after display(fig) to avoid lingering figures.
+5) Ensure each plotting UI renders exactly ONE plot instance on screen at a time and does not accumulate old plots.
+6) Prefer continuous_update=False on sliders to reduce churn unless the cell explicitly needs live updates.
+
+Implementation pattern (use this template):
+- Keep an existing plotting function that returns fig (or modify it to return fig and NOT show).
+- Create controls (sliders/dropdowns).
+- Create out = widgets.Output().
+- Define a small wrapper that:
+    with out:
+        clear_output(wait=True)
+        fig = plot_fn(**controls)
+        display(fig)
+        plt.close(fig)
+- Wire via widgets.interactive_output(wrapper, {param: control, ...})
+- display(VBox([...controls..., out]))
+- Call wrapper once initially to draw.
+
+Apply this refactor to every cell that currently uses interact(...) + matplotlib, so no duplicates appear in VS Code.
+Also remove any leftover “plt.show()” inside widget-called functions, and ensure the cell doesn’t leave behind stray figure objects as the last expression.
+
+After refactoring, run through the notebook top-to-bottom (conceptually) and confirm no cell that uses widgets generates more than one plot output during initialization.
